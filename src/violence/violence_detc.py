@@ -23,13 +23,9 @@ def print_results(video, limit=None)->str:
           model = load_model('./model/model.h5')
         except Exception as e:
           print(e)
-          print("Unable to load the model")
-          sys.exit()
-
-        Q = deque(maxlen=128)
+          print("Unable to load the model,please restart the server")
 
         vs = cv2.VideoCapture(video)
-        writer = None
         (W, H) = (None, None)
         count = 0     
         while True:
@@ -46,49 +42,13 @@ def print_results(video, limit=None)->str:
                             (H, W) = frame.shape[:2]
 
                         frame = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
-                        output = cv2.resize(frame, (512, 360)).copy()
                         frame = cv2.resize(frame, (128, 128)).astype("float16")
                         frame = frame.reshape(IMG_SIZE, IMG_SIZE, 3) / 255
-                        preds = model.predict(np.expand_dims(frame, axis=0))[0]
-                        Q.append(preds)
+                        preds = model([frame])
 
-                        results = np.array(Q).mean(axis=0)
                         i = (preds > 0.6)[0] #np.argmax(results)
 
                         label = i
-
-                        text = "Violence: {}".format(label)
-                        # print('prediction:', text)
-                        # print("print here")
-                        # file = open("output/output.txt",'w')
-                        # file.write(text)
-                        # file.close()
-
-                        color = (0, 255, 0)
-
-                        if label:
-                            color = (255, 0, 0) 
-                        else:
-                            color = (0, 255, 0)
-
-                        cv2.putText(output, text, (35, 50), cv2.FONT_HERSHEY_SIMPLEX,
-                                1, color, 3)
-
-
-                        # saving mp4 with labels but cv2.imshow is not working with this notebook
-                        if writer is None:
-                                fourcc = cv2.VideoWriter_fourcc(*"MJPG")
-                                writer = cv2.VideoWriter("output/output.mp4", fourcc, 60,
-                                        (W, H), True)
-                                print("saving video")
-
-                        # print("print here 2")
-                        # writer.write(output)
-                        #cv2.imshow("Output", output)
-
-                        # fig.add_subplot(8, 3, count)
-                        # plt.imshow(output)
-                        # plt.show()
                         RESULT.append(label)
 
 
@@ -100,8 +60,8 @@ def print_results(video, limit=None)->str:
         
         # plt.show()
         print("Cleaning up...")
-        if writer is not None:
-            writer.release()
+        # if writer is not None:
+        #     writer.release()
         vs.release()
 
         return "Violence contents exist in the video" if True in RESULT else "There are no violence contents"
@@ -112,8 +72,11 @@ def predict_video(video_url):
       # download the YouTube video
       yt = YouTube(video_url)
       stream = yt.streams.get_highest_resolution()
+      print(stream)
       video_file = stream.download(output_path="assets/video")
-      predict = print_results(video_file,limit=30)
+      print(video_file)
+      predict = print_results(video_file)
       return predict
-    except:
+    except Exception as err:
+      print(err)
       print("Unexpected error occured")
